@@ -80,10 +80,10 @@ def onPlayerCMD(event):
 			getTriggerPlayer = event['player']
 			getPlayerName = getTriggerPlayer.name
 			if getCMDArray[0] == '/领地石'and getCMDArray[1] is None:
-				massage = '§2领地石帮助列表:\n/领地石 §f添加共享 共享玩家名称\n§2/领地石 §f删除共享 共享玩家名称'
+				massage = '§2领地石帮助列表:\n/领地石 §f添加共享 共享玩家名称\n§2/领地石 §f删除共享 共享玩家名称\n§2/领地石 §f领地校正'
 				getTriggerPlayer.sendTextPacket(massage,6)
 				return False
-			if getCMDArray[1] != '帮助' and getCMDArray[1] != '添加共享' and getCMDArray[1] != '删除共享':
+			if getCMDArray[1] != '帮助' and getCMDArray[1] != '添加共享' and getCMDArray[1] != '删除共享' and getCMDArray[1] != '领地校正':
 				massage = '§e[领地石]§f错误!请输入正确的指令,如需查看帮助请输入§a/领地石 帮助'
 				getTriggerPlayer.sendTextPacket(massage,6)
 				return False
@@ -111,6 +111,14 @@ def onPlayerCMD(event):
 				getTriggerPlayer.sendTextPacket(massage,6)
 				shareModeCase[getPlayerName] = 2
 				return False
+			if getCMDArray[1] == '领地校正':
+				if getTriggerPlayer.perm == 1:
+					blockLandIsExists(getTriggerPlayer)
+					return False
+				else:
+					massage = '§e[领地石]§f该指令只有OP才能使用!'
+					getTriggerPlayer.sendTextPacket(massage,6)
+					return False
 	return True
 
 #====================================文件重置与写入事件===================================================================================================
@@ -154,6 +162,7 @@ def BlockEventJudgment(playerName,blockKey,position,playerInfo):         #本函
 						ShareInfoDelJudgment(playerName,playerInfo,Key,Value)
 						return True
 					else:
+						LandBelongPlayer = Value['所属玩家']
 						return LandBelongPlayer
 		else:
 			BlockX = position[0]
@@ -258,6 +267,79 @@ def ShareInfoDelJudgment(playerName,playerInfo,Key,Value):          #删除共�
 					playerInfo.sendTextPacket(massage,6)
 					shareModeCase[playerName] = 0
 					return False					
+
+def blockLandIsExists(playerInfo):    #判断领地中央是否存在领地石
+	global LandData
+	getWorld = playerInfo.did
+	position = playerInfo.pos
+	if BlockWorldJudgment(getWorld) == True:
+		if ConfigData['是否开启Z轴领地'] == True:
+			getPlayerX = position[0]
+			getPlayerY = position[1]            
+			getPlayerZ = position[2]
+			for Key,Value in LandData.items():
+				if int(Value['X1']) < getPlayerX <int(Value['X2']) and int(Value['Y1']) < getPlayerY < int(Value['Y2']) and int(Value['Z1']) < getPlayerZ < int(Value['Z2']):
+					KeyArray = Key.split('.')  #分割领地石的Key部分
+					LandX = int(KeyArray[0])
+					LandY = int(KeyArray[1])
+					LandZ = int(KeyArray[2])
+					getBlockInfo = mc.getBlock(LandX,LandY,LandZ,int(getWorld))
+					if getBlockInfo == None:
+						del LandData[Key]
+						massage = '§e[领地石]§a修正完毕,该领地中央没有领地石,领地已经删除'
+						playerInfo.sendTextPacket(massage,6)
+						LandFileReset()
+						LandData = json.dumps(LandData,ensure_ascii=False,indent=2)
+						LandFile.write(LandData)
+						LandFile.close()
+						LandData = json.loads(LandData)		
+						return True
+					if getBlockInfo['blockid' != ConfigData['领地石ID']]:
+						del LandData[Key]
+						massage = '§e[领地石]§a修正完毕,该领地中央没有领地石,领地已经删除'
+						playerInfo.sendTextPacket(massage,6)
+						LandFileReset()
+						LandData = json.dumps(LandData,ensure_ascii=False,indent=2)
+						LandFile.write(LandData)
+						LandFile.close()
+						LandData = json.loads(LandData)							
+						return True
+					massage = '§e[领地石]§a检测完毕,该领地中央存在领地石没有异常'
+					playerInfo.sendTextPacket(massage,6)
+					return True
+		else:
+			getPlayerX = position[0]
+			getPlayerZ = position[2]
+			for Key,Value in LandData.items():
+				if int(Value['X1']) < getPlayerX <int(Value['X2']) and int(Value['Z1']) < getPlayerZ < int(Value['Z2']):
+					KeyArray = Key.split('.')  #分割领地石的Key部分
+					LandX = int(KeyArray[0])
+					LandY = int(KeyArray[1])
+					LandZ = int(KeyArray[2])
+					getBlockInfo = mc.getBlock(LandX,LandY,LandZ,int(getWorld))
+					if getBlockInfo == None:
+						del LandData[Key]
+						massage = '§e[领地石]§a修正完毕,该领地中央没有领地石,领地已经删除'
+						playerInfo.sendTextPacket(massage,6)
+						LandFileReset()
+						LandData = json.dumps(LandData,ensure_ascii=False,indent=2)
+						LandFile.write(LandData)
+						LandFile.close()
+						LandData = json.loads(LandData)	
+						return True
+					if getBlockInfo['blockid'] != ConfigData['领地石ID']:
+						del LandData[Key]
+						massage = '§e[领地石]§a修正完毕,该领地中央没有领地石,领地已经删除'
+						playerInfo.sendTextPacket(massage,6)
+						LandFileReset()
+						LandData = json.dumps(LandData,ensure_ascii=False,indent=2)
+						LandFile.write(LandData)
+						LandFile.close()
+						LandData = json.loads(LandData)								
+						return True
+					massage = '§e[领地石]§a检测完毕,该领地中央存在领地石没有异常'
+					playerInfo.sendTextPacket(massage,6)
+					return True
 
 #===================================领地石功能函数==================================================================================================
 			
@@ -391,7 +473,7 @@ def onUseItems(event):         #物品使用事件
 	getWorld = getTriggerPlayer.did            
 	getPlayerName = getTriggerPlayer.name        
 	if BlockWorldJudgment(getWorld) == True:
-		if getItemName == 'water_bucket' or getItemName == 'lava_bucket':           #判断桶
+		if getItemName == 'water_bucket' or getItemName == 'lava_bucket' or getItemName == 'flint_and_steel':           #判断桶、打火石
 			if LandDataNotEmpty == True: 
 				BlockKey = str(getBlockPosition[0])+'.'+str(getBlockPosition[1])+'.'+str(getBlockPosition[2])
 				FunctionReturnValue = BlockEventJudgment(getPlayerName,BlockKey,getBlockPosition,getTriggerPlayer)
@@ -433,6 +515,7 @@ mc.setCommandDescription('领地石','打开领地石帮助菜单')
 mc.setCommandDescription('领地石 帮助','打开领地石帮助菜单')
 mc.setCommandDescription('领地石 添加共享 共享玩家名称','分享一个领地石的共享')
 mc.setCommandDescription('领地石 删除共享 共享玩家名称','删除一个领地石的共享')
+mc.setCommandDescription('领地石 领地校正','校正一个可能出现异常的领地')
 
 def Test():
 	for Key,Value in LandData.items():
